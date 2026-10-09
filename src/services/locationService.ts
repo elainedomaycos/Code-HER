@@ -5,9 +5,11 @@ let last: Location = { lat: 13.7565, lng: 121.0583, accuracy: 18, timestamp: Dat
 export async function getCurrentLocation(): Promise<Location> {
   if (typeof navigator !== "undefined" && navigator.geolocation) {
     try {
-      const pos = await new Promise<GeolocationPosition>((res, rej) =>
-        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 4000, maximumAge: 60000 }),
-      );
+      const pos = await new Promise<GeolocationPosition>((res, rej) => {
+        // Hard cap: the browser timeout doesn't start until permission is answered.
+        const t = setTimeout(() => rej(new Error("timeout")), 4000);
+        navigator.geolocation.getCurrentPosition((p) => { clearTimeout(t); res(p); }, (e) => { clearTimeout(t); rej(e); }, { timeout: 4000, maximumAge: 60000 });
+      });
       last = {
         lat: pos.coords.latitude, lng: pos.coords.longitude,
         accuracy: Math.round(pos.coords.accuracy), timestamp: pos.timestamp, isLastKnown: false,
