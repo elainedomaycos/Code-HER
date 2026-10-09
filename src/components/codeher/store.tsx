@@ -67,6 +67,7 @@ export function CodeHerProvider({ children }: { children: ReactNode }) {
   const [s, d] = useReducer(reducer, initial);
   const ref = useRef(s);
   ref.current = s;
+  const runRef = useRef(0);
 
   useEffect(() => {
     Promise.all([storage.loadContacts(), storage.loadSettings()]).then(([contacts, settings]) =>
@@ -97,20 +98,20 @@ export function CodeHerProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (s.phase !== "locating") return;
-    let live = true;
+    const run = ++runRef.current;
+    const live = () => runRef.current === run && ref.current.phase !== "listening";
     (async () => {
       const loc = await getCurrentLocation();
-      if (!live) return;
+      if (!live()) return;
       d({ type: "location", location: loc });
       d({ type: "phase", phase: "sending" });
       const st = ref.current;
       const results = await sendSMS(st.contacts, buildMessage(st.settings.userName, loc), { noSignal: st.settings.simulateNoSignal });
-      if (!live) return;
+      if (!live()) return;
       const phase: Phase = results.some((r) => r.status === "sent") ? "sent"
         : results.some((r) => r.status === "queued") ? "queued" : "failed";
       d({ type: "results", results, phase });
     })();
-    return () => { live = false; };
   }, [s.phase]);
 
   // Retry queued messages when signal returns
