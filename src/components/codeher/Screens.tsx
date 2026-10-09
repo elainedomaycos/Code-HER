@@ -166,7 +166,7 @@ export function ContactsScreen() {
   );
 }
 
-function ContactForm({ initial, onSave, onCancel }: { initial?: Contact; onSave: (c: Contact) => void; onCancel: () => void }) {
+function ContactForm({ initial, onSave, onCancel }: { initial?: Contact | undefined; onSave: (c: Contact) => void; onCancel: () => void }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [phone, setPhone] = useState(initial ? formatPH(initial.phone) : "+63 ");
   const [err, setErr] = useState("");

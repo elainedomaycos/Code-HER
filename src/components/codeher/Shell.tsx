@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 export function Header() {
   const { trigger, online, settings } = useCodeHer();
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const start = () => { timer.current = setTimeout(trigger, 700); };
   const end = () => clearTimeout(timer.current);
   return (
