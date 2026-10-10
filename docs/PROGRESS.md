@@ -129,6 +129,12 @@ learned (especially accuracy test results once the native layer exists).
   "~" (GSM-7bit, single segment) with a pinning test. Spec §5 updated.
   **Confirmed working on-device 2026-10-10: SOS → "Alert sent", SMS
   delivered.** SMS track closed pending the accuracy-matrix period.
+- **Judges' release v1.0-alpha** (2026-10-10): test data removed from
+  defaults (empty contacts), versionCode 2 / versionName 1.0-alpha, upload
+  keystore generated outside the repo (30-yr RSA, creds in gitignored
+  `android/local.properties`), conditional release signing in Gradle,
+  signed + verified APK (~82 MB) published as a GitHub Release with SHA-256
+  and judge install notes. README links the Releases page.
 - **GSM-7bit template + destination isolation** (2026-10-10): receipts
   proved both routing paths fail with `RESULT_ERROR_GENERIC_FAILURE` while
   stock SMS works — and revealed our "±" forced every message into UCS-2
