@@ -1,19 +1,39 @@
-// Mock voice layer. A native Android implementation can replace these functions.
-type Cb = (phrase: string) => void;
-let listeners: Cb[] = [];
-let listening = false;
+// Mock ListeningService: works in the browser for dev and demo.
+// The native Android implementation (Phase 2) replaces this behind the
+// selector in src/services/index.ts: foreground service + mic + Vosk keyword
+// engine with a restricted grammar, emitting phraseDetected events to JS.
+import type { ListeningService, ListeningStatus, PhraseDetection } from "./types";
 
-export async function startListening(): Promise<void> { listening = true; }
-export async function stopListening(): Promise<void> { listening = false; }
-export function isListening() { return listening; }
+type Cb = (e: PhraseDetection) => void;
 
-export function onPhraseDetected(cb: Cb): () => void {
-  listeners.push(cb);
-  return () => { listeners = listeners.filter((l) => l !== cb); };
-}
+const listeners = new Set<Cb>();
+let status: ListeningStatus = "stopped";
+let phrase = "help me";
 
-/** Dev/demo: fire a detection event. */
-export function simulateDetection(phrase: string) {
-  if (!listening) return;
-  listeners.forEach((l) => l(phrase));
+export const mockListeningService: ListeningService = {
+  async start(): Promise<void> {
+    status = "listening";
+  },
+  async stop(): Promise<void> {
+    status = "stopped";
+  },
+  async getStatus(): Promise<ListeningStatus> {
+    return status;
+  },
+  async setPhrase(p: string): Promise<void> {
+    phrase = p;
+  },
+  onPhraseDetected(cb: Cb): () => void {
+    listeners.add(cb);
+    return () => {
+      listeners.delete(cb);
+    };
+  },
+};
+
+/** Mock-only debug hook (codeHER.md §4 "Simulate phrase"). No-op unless listening. */
+export function emitMockDetection(): void {
+  if (status !== "listening") return;
+  const event: PhraseDetection = { phrase, confidence: 1, at: Date.now() };
+  listeners.forEach((l) => l(event));
 }

@@ -1,20 +1,37 @@
-import type { Contact, ContactResult } from "./types";
+// Mock SmsService: validates PH numbers, honors the "no signal" simulation,
+// keeps an in-memory retry outbox. Native (Phase 2) sends via SmsManager with
+// delivery receipts and a persisted retry queue.
+import type { SmsResult, SmsService } from "./types";
 
-let queue: { contacts: Contact[]; message: string }[] = [];
+let noSignal = false;
 
-export async function sendSMS(contacts: Contact[], message: string, opts: { noSignal: boolean }): Promise<ContactResult[]> {
-  await new Promise((r) => setTimeout(r, 1200));
-  if (opts.noSignal) {
-    queue.push({ contacts, message });
-    return contacts.map((contact) => ({ contact, status: "queued" }));
-  }
-  return contacts.map((contact) => ({ contact, status: /^\+639\d{9}$/.test(contact.phone) ? "sent" : "failed" }));
+type QueueEntry = { to: string; body: string };
+let outbox: QueueEntry[] = [];
+
+const PHONE_RE = /^\+639\d{9}$/;
+
+/**
+ * Mock-only: mirror the settings "simulate no signal" toggle. Under the
+ * native selector this is a no-op — the radio proves signal, not a flag.
+ */
+export function setMockNoSignal(v: boolean): void {
+  noSignal = v;
 }
 
-export async function retryQueued(opts: { noSignal: boolean }): Promise<ContactResult[] | null> {
-  if (opts.noSignal || queue.length === 0) return null;
-  const items = queue; queue = [];
-  const results: ContactResult[] = [];
-  for (const i of items) results.push(...(await sendSMS(i.contacts, i.message, opts)));
-  return results;
-}
+export const mockSmsService: SmsService = {
+  async send(to: string, body: string): Promise<SmsResult> {
+    await new Promise((r) => setTimeout(r, 500));
+    if (noSignal) return { ok: false, error: "no-signal" };
+    if (!PHONE_RE.test(to)) return { ok: false, error: "invalid-number" };
+    void body;
+    return { ok: true };
+  },
+  async queueForRetry(to: string, body: string): Promise<void> {
+    outbox.push({ to, body });
+  },
+  async flushQueue(): Promise<void> {
+    // Mock outbox is best-effort and in-memory; the caller re-sends via
+    // send() to learn per-contact status. Native persists and delivers here.
+    outbox = [];
+  },
+};

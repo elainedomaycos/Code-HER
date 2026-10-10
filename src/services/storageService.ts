@@ -1,12 +1,21 @@
-import type { Contact, Settings } from "./types";
+// StorageService (mock == production for now): localStorage works inside the
+// Android WebView too, so no native implementation is needed.
+import type { Contact, Settings, StorageService } from "./types";
 
 const K = { contacts: "codeher.contacts", settings: "codeher.settings" };
 
 export const defaultContacts: Contact[] = [
-  { id: "c1", name: "Mia Santos", phone: "+639172840612" },
-  { id: "c2", name: "Leah Reyes", phone: "+639054472186" },
+  { id: "c1", name: "Elaine Domaycos", phone: "+639933950898" },
 ];
-export const defaultSettings: Settings = { userName: "Kassandra", safePhrase: "Tulong", simulateNoSignal: false };
+export const defaultSettings: Settings = {
+  userName: "Kassandra",
+  safePhrase: "help me",
+  simulateNoSignal: false,
+  onboarded: false,
+  // Off by default: several PH carriers filter URL-bearing SMS as spam, and
+  // a coordinates-only alert that arrives beats a linked one that doesn't.
+  includeMapLink: false,
+};
 
 function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -17,9 +26,13 @@ function read<T>(key: string, fallback: T): T {
     return fallback;
   }
 }
-const write = (key: string, v: unknown) => localStorage.setItem(key, JSON.stringify(v));
+const write = (key: string, v: unknown): void => {
+  localStorage.setItem(key, JSON.stringify(v));
+};
 
-export const loadContacts = async () => read(K.contacts, defaultContacts);
-export const saveContacts = async (c: Contact[]) => write(K.contacts, c);
-export const loadSettings = async () => ({ ...defaultSettings, ...read(K.settings, {}) });
-export const saveSettings = async (s: Settings) => write(K.settings, s);
+export const mockStorageService: StorageService = {
+  getContacts: () => Promise.resolve(read(K.contacts, defaultContacts)),
+  saveContacts: (c) => Promise.resolve(write(K.contacts, c)),
+  getSettings: () => Promise.resolve({ ...defaultSettings, ...read(K.settings, {}) }),
+  saveSettings: (s) => Promise.resolve(write(K.settings, s)),
+};
