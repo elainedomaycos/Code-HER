@@ -4,9 +4,7 @@ import type { Contact, Settings, StorageService } from "./types";
 
 const K = { contacts: "codeher.contacts", settings: "codeher.settings" };
 
-export const defaultContacts: Contact[] = [
-  { id: "c1", name: "Elaine Domaycos", phone: "+639933950898" },
-];
+export const defaultContacts: Contact[] = [];
 export const defaultSettings: Settings = {
   userName: "Kassandra",
   safePhrase: "help me",

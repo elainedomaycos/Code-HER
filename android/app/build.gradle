@@ -1,5 +1,19 @@
 apply plugin: 'com.android.application'
 
+// Release signing (judges' APK): the keystore lives OUTSIDE the repo
+// (~/.android/codeher-release.jks) with credentials in
+// android/local.properties (gitignored). Evaluated for every build but only
+// applied to the release type when a key exists, so fresh clones and debug
+// builds never break for lack of a key. Unsigned release builds cannot be
+// installed; create both per README before releasing.
+def localProps = new Properties()
+def localPropsFile = rootProject.file('local.properties')
+if (localPropsFile.exists()) {
+    localPropsFile.withInputStream { stream -> localProps.load(stream) }
+}
+def keystorePath = localProps['codeher.keystore.path']?.toString()
+def hasSigningKey = keystorePath != null && file(keystorePath).exists()
+
 android {
     namespace = "com.codeher.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -10,8 +24,8 @@ android {
         applicationId "com.codeher.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.0-alpha"
         // Build identity stamp, visible in Settings → About and logcat.
         // Regenerated every build so on-phone builds are always identifiable.
         buildConfigField "String", "BUILD_TAG", "\"" + new Date().format('yyyyMMdd-HHmm') + "\""
@@ -22,10 +36,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (hasSigningKey) {
+                storeFile file(keystorePath)
+                storePassword localProps['codeher.keystore.password'].toString()
+                keyAlias localProps['codeher.key.alias'].toString()
+                keyPassword localProps['codeher.key.password'].toString()
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasSigningKey) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

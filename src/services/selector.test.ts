@@ -28,10 +28,9 @@ describe("service selector (browser → mocks)", () => {
     });
   });
 
-  it("storage serves defaults", async () => {
+  it("storage ships empty so judges add their own contacts", async () => {
     const contacts = await storageService.getContacts();
-    expect(contacts).toHaveLength(1);
-    expect(contacts[0]).toMatchObject({ name: "Elaine Domaycos", phone: "+639933950898" });
+    expect(contacts).toEqual([]);
   });
 
   it("status reports mock permission limits", async () => {

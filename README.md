@@ -28,6 +28,18 @@ working without internet and keeping the user's voice completely private.
 - **Privacy:** audio is consumed frame-by-frame on the phone; nothing is
   recorded or uploaded. SMS needs cellular coverage, not internet.
 
+## Download (judges' build v1.0-alpha)
+
+Get the signed APK from the
+[Releases page](https://github.com/elainedomaycos/Code-HER/releases)
+(`CodeHER-v1.0-alpha.apk`, ~82 MB, Android 7.0+). Verify the SHA-256
+checksum published alongside it, then install: Android will ask you to allow
+"Install unknown apps" once. On first launch, grant Microphone, Location,
+and SMS; add 1–2 trusted contacts in the Contacts tab and rehearse with
+Settings → Test mode. This is an alpha demo build: detection accuracy is
+still being measured (see `docs/ACCURACY_TEST.md`), and SMS needs cellular
+coverage.
+
 See [`codeHER.md`](./codeHER.md) (scope + architecture rules),
 [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) (one-slide diagram),
 [`docs/DEMO_SCRIPT.md`](./docs/DEMO_SCRIPT.md) (60–90 s demo),
