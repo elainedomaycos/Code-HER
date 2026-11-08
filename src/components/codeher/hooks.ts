@@ -1,5 +1,12 @@
 import { useSyncExternalStore } from "react";
-import { getVoiceEngineState, onVoiceEngineStateChange, type VoiceEngineState } from "@/services";
+import {
+  getKeepScreenOnStatus,
+  getVoiceEngineState,
+  onKeepScreenOnStatusChange,
+  onVoiceEngineStateChange,
+  type VoiceEngineState,
+  type WakeLockStatus,
+} from "@/services";
 import { useCodeHer } from "./store";
 import { countDone, getSetupSteps, isSetupComplete, type SetupStep } from "./setup";
 
@@ -11,6 +18,15 @@ export function useVoiceEngine(): VoiceEngineState {
     onVoiceEngineStateChange,
     getVoiceEngineState,
     () => SERVER_VOICE_STATE,
+  );
+}
+
+/** Whether the screen is being kept on (web), for the Home status copy. */
+export function useKeepScreenOnStatus(): WakeLockStatus {
+  return useSyncExternalStore(
+    onKeepScreenOnStatusChange,
+    getKeepScreenOnStatus,
+    () => "unsupported" as const,
   );
 }
 

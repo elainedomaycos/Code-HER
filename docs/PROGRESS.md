@@ -3,6 +3,26 @@
 Running log per codeHER.md §9 rule 11: what is done, what is blocked, what was
 learned (especially accuracy test results once the native layer exists).
 
+## 2026-11-08 Screen wake lock (web) after SYNC brief review
+
+The brief's core promise is help "when reaching for her phone is not an
+option". A browser tab loses the mic when the screen locks, so on web:
+
+- `src/services/wakeLockService.ts` keeps the screen on while any reason
+  holds it. "voice" is wired inside `services/index.ts` to the engine state
+  (loading-model, needs-gesture, listening). "alert" is held by the store in
+  detected, countdown, locating, sending, handoff and queued, so a manual SOS
+  from paused cannot stall behind a lock screen. Re-requested when the page
+  is visible again, or when the browser drops it while visible.
+- Home voice card says plainly: "Keep this page open. The screen stays on
+  while listening." or, when the browser refuses, "Keep this page open and
+  the screen on. Voice stops if the screen locks." Nothing while pending.
+- Native unchanged: the foreground service listens with the screen off.
+- Code review of this change: 10 findings, all fixed.
+- Brief gaps still open: accuracy matrix (no numbers yet for either
+  engine), brief still names Android SpeechRecognizer (we use Vosk), no
+  public web URL (model over the 25 MiB asset limit).
+
 ## 2026-11-08 HTTPS dev server for phone testing
 
 - `bun run dev:https` sets `CODEHER_HTTPS=1`, which adds

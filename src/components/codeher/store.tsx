@@ -3,6 +3,7 @@ import {
   isNativeActive,
   listeningService,
   locationService,
+  setAlertKeepsScreenOn,
   setSmsNoSignal,
   smsService,
   statusService,
@@ -27,6 +28,19 @@ export type Phase =
   | "failed"
   | "tested";
 export type Tab = "home" | "contacts" | "settings";
+
+/**
+ * Alert phases that must not stall behind a lock screen (web): the
+ * countdown, location, sending and Messages handoff, even when voice is paused.
+ */
+export const SCREEN_ON_PHASES: ReadonlySet<Phase> = new Set<Phase>([
+  "detected",
+  "countdown",
+  "locating",
+  "sending",
+  "handoff",
+  "queued",
+]);
 
 /** codeHER.md §2: one or two trusted contacts for the MVP. */
 export const MAX_CONTACTS = 2;
@@ -403,6 +417,12 @@ export function CodeHerProvider({ children }: { children: ReactNode }) {
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
+
+  const alertActive = SCREEN_ON_PHASES.has(s.phase);
+  useEffect(() => {
+    setAlertKeepsScreenOn(alertActive);
+  }, [alertActive]);
+  useEffect(() => () => setAlertKeepsScreenOn(false), []);
 
   // Countdown → locating → sending → result
   useEffect(() => {

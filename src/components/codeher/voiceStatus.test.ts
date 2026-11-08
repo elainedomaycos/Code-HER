@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { VoiceEngineState, VoiceEngineStatus, VoiceUnavailableReason } from "@/services/types";
-import { describeVoice } from "./voiceStatus";
+import { describeVoice, screenNote } from "./voiceStatus";
 
 const st = (status: VoiceEngineStatus, reason?: VoiceUnavailableReason): VoiceEngineState =>
   reason ? { status, reason, native: false } : { status, native: false };
@@ -95,5 +95,21 @@ describe("voice status copy", () => {
       const c = describeVoice(s, false, "help me");
       expect(`${c.title} ${c.detail} ${c.actionLabel ?? ""}`).not.toMatch(/[–—]| - /);
     }
+  });
+});
+
+describe("screenNote", () => {
+  it("says the screen stays on when the wake lock holds", () => {
+    expect(screenNote("on")).toMatch(/screen stays on/);
+  });
+
+  it("asks her to keep the screen on when the browser cannot", () => {
+    for (const s of ["denied", "unsupported"] as const) {
+      expect(screenNote(s)).toMatch(/Voice stops if the screen locks/);
+    }
+  });
+
+  it("says nothing while the lock is still being requested", () => {
+    expect(screenNote("off")).toBeNull();
   });
 });

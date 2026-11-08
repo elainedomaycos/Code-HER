@@ -11,6 +11,7 @@ import { mockLocationService } from "./locationService";
 import { mockSmsService, setMockNoSignal } from "./smsService";
 import { mockStorageService } from "./storageService";
 import { mockStatusService } from "./statusService";
+import { browserScreenWakeLock, type WakeLockStatus } from "./wakeLockService";
 import {
   nativeGetBuildInfo,
   nativeListeningService,
@@ -21,6 +22,7 @@ import {
   nativeStorageService,
 } from "./native";
 export type { BuildInfo } from "./native";
+export type { WakeLockStatus } from "./wakeLockService";
 export type { VoiceEngineState, VoiceEngineStatus, VoiceUnavailableReason } from "./types";
 export { webSmsHandoff, type SmsHandoffDraft, type SmsPlatform } from "./smsService";
 // Phrase rules shared by the phrase field and the keyword engine, so the UI
@@ -89,4 +91,37 @@ export function getBuildInfo(): Promise<BuildInfo> {
     return Promise.resolve({ buildTag: "browser", versionName: "dev", appId: "browser" });
   }
   return nativeGetBuildInfo();
+}
+
+/** Engine states where the screen must stay on: a locked screen kills the web mic. */
+const SCREEN_ON_VOICE: ReadonlySet<VoiceEngineState["status"]> = new Set([
+  "loading-model",
+  "needs-gesture",
+  "listening",
+]);
+
+// Web only: the voice reason follows the engine on its own, so no screen has
+// to mount anything for it. Native listens with the screen off through its
+// foreground service and never takes the lock.
+if (!useNative && typeof window !== "undefined") {
+  const lock = browserScreenWakeLock();
+  const sync = (st: VoiceEngineState) => lock.hold("voice", SCREEN_ON_VOICE.has(st.status));
+  sync(webListeningService.getEngineState());
+  webListeningService.onEngineStateChange(sync);
+}
+
+/**
+ * Web only: keep the screen on while an alert runs (countdown, locating,
+ * Messages handoff), even when voice is paused. No-op on native.
+ */
+export function setAlertKeepsScreenOn(on: boolean): void {
+  if (!useNative) browserScreenWakeLock().hold("alert", on);
+}
+
+export function getKeepScreenOnStatus(): WakeLockStatus {
+  return useNative ? "unsupported" : browserScreenWakeLock().getStatus();
+}
+
+export function onKeepScreenOnStatusChange(cb: () => void): () => void {
+  return useNative ? () => undefined : browserScreenWakeLock().onStatusChange(cb);
 }

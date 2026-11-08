@@ -3,8 +3,8 @@ import { AudioLines, Loader2, MicOff, Pause } from "lucide-react";
 import { listeningService } from "@/services";
 import { cn } from "@/lib/utils";
 import { useCodeHer } from "./store";
-import { useVoiceEngine } from "./hooks";
-import { describeVoice, type VoiceAction, type VoiceTone } from "./voiceStatus";
+import { useKeepScreenOnStatus, useVoiceEngine } from "./hooks";
+import { describeVoice, screenNote, type VoiceAction, type VoiceTone } from "./voiceStatus";
 import { btnSecondary, cardCls } from "./ui";
 
 const toneIcon: Record<VoiceTone, string> = {
@@ -45,8 +45,10 @@ const STILL_BLOCKED_NATIVE = "Still blocked. Open your phone settings to allow t
 export function VoiceStatusCard({ compact = false }: { compact?: boolean }) {
   const { phase, settings, togglePause, contacts } = useCodeHer();
   const voice = useVoiceEngine();
+  const screen = useKeepScreenOnStatus();
   const paused = phase === "paused";
   const copy = describeVoice(voice, paused, settings.safePhrase);
+  const note = copy.tone === "ok" && !voice.native ? screenNote(screen) : null;
   const [retried, setRetried] = useState(false);
 
   useEffect(() => {
@@ -83,6 +85,7 @@ export function VoiceStatusCard({ compact = false }: { compact?: boolean }) {
           </p>
         </div>
       </div>
+      {note && <p className="mt-3 text-sm font-semibold text-foreground">{note}</p>}
       {retried && voice.status === "mic-blocked" && (
         <p className="mt-3 text-sm font-semibold text-foreground">
           {voice.native ? STILL_BLOCKED_NATIVE : STILL_BLOCKED}

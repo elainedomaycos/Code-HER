@@ -1,5 +1,5 @@
 // Plain language for the voice engine state. Pure so it can be unit tested.
-import { effectivePhrase } from "@/services";
+import { effectivePhrase, type WakeLockStatus } from "@/services";
 import type { VoiceEngineState } from "@/services/types";
 
 export type VoiceTone = "ok" | "busy" | "warn" | "off";
@@ -108,4 +108,15 @@ export function describeVoice(
         actionLabel: "Turn on voice",
       };
   }
+}
+
+/**
+ * Web only: a browser tab loses the mic when the screen locks. Say so
+ * plainly, and whether we could keep the screen on for her. Null while the
+ * lock is still being requested, so no warning flashes on every start.
+ */
+export function screenNote(status: WakeLockStatus): string | null {
+  if (status === "on") return "Keep this page open. The screen stays on while listening.";
+  if (status === "off") return null;
+  return "Keep this page open and the screen on. Voice stops if the screen locks.";
 }
