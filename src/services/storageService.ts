@@ -6,7 +6,8 @@ const K = { contacts: "codeher.contacts", settings: "codeher.settings" };
 
 export const defaultContacts: Contact[] = [];
 export const defaultSettings: Settings = {
-  userName: "Kassandra",
+  // Empty until the user sets it; buildMessage falls back to "Someone".
+  userName: "",
   safePhrase: "help me",
   simulateNoSignal: false,
   onboarded: false,

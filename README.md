@@ -72,6 +72,32 @@ Copy-Item "$env:TEMP\vosk-model\vosk-model-small-en-us-0.15\*" `
   "android\app\src\main\assets\model-en-us" -Recurse -Force
 ```
 
+## Web voice trigger (dev notes)
+
+The browser build runs the same offline engine as Android: Vosk compiled to
+WebAssembly ([`vosk-browser`](https://github.com/ccoreilly/vosk-browser)),
+with a restricted grammar of the safe phrase plus `[unk]`. Only final
+results with word confidence of 0.9 or higher fire, as on the phone.
+
+Fetch the model once per machine (~41 MB, git-ignored, saved to
+`public/models/`):
+
+```sh
+bun run fetch:model    # add --force to re-download
+```
+
+- The model is served from the app's own origin (`/models/vosk-model-small-en-us-0.15.tar.gz`)
+  and cached by the engine in IndexedDB after the first load. Audio stays in
+  memory on the device. Nothing is recorded or uploaded.
+- The mic needs a secure context: `http://localhost:8080` works, a LAN IP
+  such as `http://192.168.x.x:8080` on a phone does not (use HTTPS or a tunnel
+  to test on a phone browser).
+- Without a mic, with mic permission denied, or with the model missing, the
+  app keeps working in simulate only mode: test mode "Simulate phrase" and
+  manual SOS still trigger the alert.
+- Code: `src/services/webVoiceService.ts` (engine lifecycle),
+  `src/services/voskGrammar.ts` (grammar and confidence gating).
+
 ## How to run (developers)
 
 Prerequisites: [Bun](https://bun.sh/), Android Studio + SDK, JDK 21, a

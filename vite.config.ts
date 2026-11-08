@@ -8,9 +8,37 @@
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react from "@vitejs/plugin-react";
+import { rmSync } from "node:fs";
+import { resolve } from "node:path";
 import { nitro } from "nitro/vite";
-import { defineConfig, loadEnv, type UserConfig } from "vite";
+import { defineConfig, loadEnv, type Plugin, type UserConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
+
+/**
+ * Android bundle only: drop the copied public/models (the ~41 MB Vosk web
+ * model) from the client output. The APK listens with the native engine and
+ * never fetches it, so shipping it only bloats the install. The web build
+ * keeps it (the browser engine loads /models/...).
+ */
+export const ANDROID_DROPPED_PUBLIC_DIRS = ["models"] as const;
+
+function dropWebOnlyAssets(clientOutDir: string): Plugin {
+  return {
+    name: "codeher:drop-web-only-assets",
+    apply: "build",
+    // Runs after each environment wrote its output (public/ is copied by
+    // then); rmSync with force is a no-op when the folder is already gone.
+    closeBundle: {
+      order: "post",
+      sequential: true,
+      handler() {
+        for (const dir of ANDROID_DROPPED_PUBLIC_DIRS) {
+          rmSync(resolve(clientOutDir, dir), { recursive: true, force: true });
+        }
+      },
+    },
+  };
+}
 
 export default defineConfig(({ command, mode }) => {
   // Capacitor Android bundle: static SPA output (the native WebView serves
@@ -107,6 +135,8 @@ export default defineConfig(({ command, mode }) => {
       // Build-only: matches the wrapper's local (non-sandbox) behavior.
       // Skipped for the SPA Android bundle (static files, no server).
       ...(command === "build" && !spaBuild ? [nitro({ defaultPreset: "cloudflare-module" })] : []),
+      // Capacitor webDir is dist/client (capacitor.config.ts).
+      ...(spaBuild ? [dropWebOnlyAssets(resolve(process.cwd(), "dist/client"))] : []),
     ],
   };
 

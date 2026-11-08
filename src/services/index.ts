@@ -2,7 +2,11 @@
 // explicitly enabled AND running inside Capacitor; mock implementations
 // otherwise (browser dev, demo, tests). UI components import services from
 // here — never from "./voiceService" etc., and never a Capacitor plugin.
-import { mockListeningService, emitMockDetection } from "./voiceService";
+// Listening is the exception to "mock in the browser": the web build runs
+// the real offline Vosk WASM engine (./webVoiceService.ts).
+import { withCoarseEngineState } from "./voiceService";
+import { webListeningService } from "./webVoiceService";
+import type { VoiceEngineState } from "./types";
 import { mockLocationService } from "./locationService";
 import { mockSmsService, setMockNoSignal } from "./smsService";
 import { mockStorageService } from "./storageService";
@@ -17,6 +21,18 @@ import {
   nativeStorageService,
 } from "./native";
 export type { BuildInfo } from "./native";
+export type { VoiceEngineState, VoiceEngineStatus, VoiceUnavailableReason } from "./types";
+export { webSmsHandoff, type SmsHandoffDraft, type SmsPlatform } from "./smsService";
+// Phrase rules shared by the phrase field and the keyword engine, so the UI
+// shows and saves exactly what the engine listens for.
+export {
+  DEFAULT_PHRASE,
+  PHRASE_MAX_WORDS,
+  sanitizePhrase as effectivePhrase,
+  validatePhrase,
+  type PhraseCheck,
+  type PhraseProblem,
+} from "./voskGrammar";
 import type { BuildInfo } from "./native";
 
 declare global {
@@ -30,7 +46,9 @@ const useNative =
   typeof window !== "undefined" &&
   typeof window.Capacitor !== "undefined";
 
-export const listeningService = useNative ? nativeListeningService : mockListeningService;
+const nativeVoice = withCoarseEngineState(nativeListeningService);
+
+export const listeningService = useNative ? nativeVoice.service : webListeningService;
 export const locationService = useNative ? nativeLocationService : mockLocationService;
 export const smsService = useNative ? nativeSmsService : mockSmsService;
 export const storageService = useNative ? nativeStorageService : mockStorageService;
@@ -39,9 +57,16 @@ export const statusService = useNative ? nativeStatusService : mockStatusService
 /** True when the native service layer is active (device WebView). */
 export const isNativeActive = useNative;
 
-/** Mock-only debug hook (§4 "Simulate phrase"). No-op on native or when paused. */
-export function simulatePhraseDetection(): void {
-  if (!useNative) emitMockDetection();
+/** Current voice engine readiness (drives "Preparing voice engine" / "Listening" / "Mic blocked"). */
+export function getVoiceEngineState(): VoiceEngineState {
+  return useNative ? nativeVoice.getEngineState() : webListeningService.getEngineState();
+}
+
+/** Subscribe to voice engine readiness changes. Returns an unsubscribe. */
+export function onVoiceEngineStateChange(cb: (s: VoiceEngineState) => void): () => void {
+  return useNative
+    ? nativeVoice.onEngineStateChange(cb)
+    : webListeningService.onEngineStateChange(cb);
 }
 
 /** Mock-only: mirror the "simulate no signal" setting. No-op on native. */

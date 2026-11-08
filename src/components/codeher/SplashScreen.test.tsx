@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
-import { SplashScreen } from "./Screens";
+import { SplashScreen } from "./SplashScreen";
 
 afterEach(() => {
   vi.useRealTimers();
