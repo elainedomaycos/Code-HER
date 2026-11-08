@@ -7,10 +7,10 @@ import { MessagePreview } from "./MessagePreview";
 import { NameField } from "./NameField";
 import { PermissionsList } from "./PermissionsList";
 import { PhrasePanel } from "./PhrasePanel";
-import { btnSecondary, cardCls, ScreenTitle, Section, SwitchRow } from "./ui";
+import { btnSecondary, cardCls, ScreenTitle, Section } from "./ui";
 
 function TestModeSection() {
-  const { phase, startTest, settings, setSettings, smsMode } = useCodeHer();
+  const { phase, startTest } = useCodeHer();
   const paused = phase === "paused";
   return (
     <Section
@@ -25,14 +25,6 @@ function TestModeSection() {
         </button>
         {paused && (
           <p className="text-sm text-muted-foreground">Resume listening on Home to test.</p>
-        )}
-        {smsMode === "native" && (
-          <SwitchRow
-            label="Simulate no signal"
-            detail="Shows what happens when a text cannot be sent."
-            checked={settings.simulateNoSignal}
-            onChange={(simulateNoSignal) => setSettings({ ...settings, simulateNoSignal })}
-          />
         )}
       </div>
     </Section>

@@ -104,7 +104,11 @@ function browserUnsupportedReason(): VoiceUnavailableReason | null {
   return null;
 }
 
-const GESTURE_EVENTS = ["pointerdown", "keydown", "touchend"] as const;
+// Events that carry user activation (HTML spec): a touch pointerdown does
+// not, so resuming audio there fails on iOS and eats the tap. pointerup is
+// activating for touch and pen, and a mouse press already activated on
+// mousedown, so pointerup works for every pointer type.
+export const GESTURE_EVENTS = ["pointerup", "keydown", "touchend"] as const;
 
 function browserOnUserGesture(cb: () => void): () => void {
   const handler = () => {

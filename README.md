@@ -90,8 +90,12 @@ bun run fetch:model    # add --force to re-download
   and cached by the engine in IndexedDB after the first load. Audio stays in
   memory on the device. Nothing is recorded or uploaded.
 - The mic needs a secure context: `http://localhost:8080` works, a LAN IP
-  such as `http://192.168.x.x:8080` on a phone does not (use HTTPS or a tunnel
-  to test on a phone browser).
+  such as `http://192.168.x.x:8080` on a phone does not. To test on a phone
+  browser, run `bun run dev:https` and open the `Network: https://...` URL it
+  prints from a phone on the same Wi-Fi. The cert is self-signed, so the phone
+  shows a warning once: tap Advanced, then Proceed (Chrome) or Show Details,
+  then visit this website (Safari). If the phone cannot connect, allow port
+  8080 for private networks in Windows Firewall.
 - Without a mic, with mic permission denied, or with the model missing, the
   app keeps working in simulate only mode: test mode "Simulate phrase" and
   manual SOS still trigger the alert.
@@ -106,6 +110,7 @@ physical Android phone (emulators can't do mic/SMS reliably).
 ```sh
 bun install
 bun run dev          # web preview at http://localhost:8080/
+bun run dev:https    # same over HTTPS, for phone browsers on your Wi-Fi
 bun run build        # web production build
 bunx tsc --noEmit    # typecheck
 bunx vitest run      # tests

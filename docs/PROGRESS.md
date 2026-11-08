@@ -3,6 +3,37 @@
 Running log per codeHER.md §9 rule 11: what is done, what is blocked, what was
 learned (especially accuracy test results once the native layer exists).
 
+## 2026-11-08 HTTPS dev server for phone testing
+
+- `bun run dev:https` sets `CODEHER_HTTPS=1`, which adds
+  `@vitejs/plugin-basic-ssl` to the dev server only (never to builds). Serves
+  `https://<LAN IP>:8080/` with a self-signed cert cached in
+  `node_modules/.vite/basic-ssl`, so the mic works in a phone browser after
+  one "proceed anyway". Verified: page 200 and the 41 MB model 200 over TLS on
+  the LAN IP. Real phone run (voice trigger + Messages handoff) still to do.
+
+## 2026-11-08 Branch code review fixes
+
+Review of feat/web-ready-ui against main; 8 of 10 findings fixed.
+
+- A real alert cancelled while locating could come back inside a later test
+  and open Messages. The locating run is now tied to its `alertRun` and only
+  continues while the phase is locating/sending (`alertRun.test.tsx`).
+- The queued retry drops its result if she left the queued screen.
+- Cancel restarts the voice engine (manual SOS from paused left it off while
+  the UI said listening).
+- Messages "opened" detection: hide listeners stay mounted and the platform
+  is recorded before `open()`, so a hide before the handoff render counts.
+- "Simulate no signal" removed. It was shown only on native, where it did
+  nothing except a misleading header; the stored flag no longer blocks retry.
+- Voice "tap to start" listens on pointerup/touchend/keydown. A touch
+  pointerdown has no user activation, so iOS never resumed audio.
+- Contact ids use `newId()` (`src/lib/id.ts`): `crypto.randomUUID` is missing
+  on plain http LAN pages.
+- `fetch:model` pins the archive SHA-256. `ignoreRepeat` shared from
+  `src/lib/keys.ts`.
+- Not done (low): `autoOpenAttempted` is derivable from `platform`.
+
 ## 2026-11-08 Review fixes (alert copy, handoff status, timers, SMS text, APK size)
 
 - Zero contacts: only the web handoff says "You will choose who to text after

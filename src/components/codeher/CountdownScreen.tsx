@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { FlaskConical, Loader2 } from "lucide-react";
+import { ignoreRepeat } from "@/lib/keys";
 import { cn } from "@/lib/utils";
 import { COUNTDOWN_SECONDS, useCodeHer, type SmsMode } from "./store";
 import { countdownRecipientsLine } from "./format";
@@ -111,10 +112,8 @@ export function CountdownScreen() {
           ref={cancelRef}
           type="button"
           onClick={onCancel}
-          onKeyDown={(e) => {
-            // A held key from the SOS hold must not cancel the alert.
-            if (e.repeat) e.preventDefault();
-          }}
+          // A held key from the SOS hold must not cancel the alert.
+          onKeyDown={ignoreRepeat}
           disabled={!canCancel}
           className="flex min-h-24 w-full items-center justify-center rounded-3xl bg-foreground text-2xl font-extrabold text-background shadow-soft active:scale-[0.98] disabled:opacity-40 motion-reduce:transition-none"
         >

@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { newId } from "@/lib/id";
 import { normalizePH, formatPH } from "@/lib/phone";
 import type { Contact } from "@/services/types";
 import { cn } from "@/lib/utils";
@@ -33,7 +34,7 @@ export function ContactForm({
         if (!n) return setErr("Enter their name.");
         const p = normalizePH(phone);
         if (!p) return setErr("Enter a PH mobile number, like 0917 123 4567.");
-        onSave({ id: initial?.id ?? crypto.randomUUID(), name: n.slice(0, NAME_MAX), phone: p });
+        onSave({ id: initial?.id ?? newId(), name: n.slice(0, NAME_MAX), phone: p });
       }}
     >
       <h2 className="text-lg font-extrabold">{initial ? "Edit contact" : "Add a contact"}</h2>

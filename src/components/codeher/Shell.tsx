@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Home, Users, Settings as SettingsIcon, SignalZero } from "lucide-react";
+import { Home, Users, Settings as SettingsIcon } from "lucide-react";
 import { useCodeHer, type Tab } from "./store";
 import { cn } from "@/lib/utils";
 
@@ -9,23 +9,13 @@ const logoUrl = "/codeher-logo.png";
 // from any tab; a stray press could text a contact, so tests now only start
 // from the visible Test buttons on Home and in Settings.
 export function Header() {
-  const { online, settings, smsMode } = useCodeHer();
-  const noSignal = smsMode === "native" && settings.simulateNoSignal;
+  const { online } = useCodeHer();
   return (
     <header className="sticky top-0 z-10 flex min-h-[4.5rem] items-center justify-between bg-background/95 px-4 py-3 backdrop-blur">
       <img src={logoUrl} alt="Code:HER" className="h-8 w-auto select-none" draggable={false} />
       <p className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-        {noSignal ? (
-          <>
-            <SignalZero className="h-4 w-4 text-warning" aria-hidden="true" />
-            No signal. Will retry.
-          </>
-        ) : (
-          <>
-            <span className="h-2 w-2 rounded-full bg-success" aria-hidden="true" />
-            {online ? "Works without internet" : "Offline. Still works."}
-          </>
-        )}
+        <span className="h-2 w-2 rounded-full bg-success" aria-hidden="true" />
+        {online ? "Works without internet" : "Offline. Still works."}
       </p>
     </header>
   );

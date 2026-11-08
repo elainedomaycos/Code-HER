@@ -6,6 +6,7 @@
 // Dropped Lovable-only pieces: devtools injection, HMR gate, sandbox bridge,
 // /__l5e asset proxy, and server error-logger overlays (console still works).
 import tailwindcss from "@tailwindcss/vite";
+import basicSsl from "@vitejs/plugin-basic-ssl";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react from "@vitejs/plugin-react";
 import { rmSync } from "node:fs";
@@ -46,6 +47,11 @@ export default defineConfig(({ command, mode }) => {
   // --mode android). The app uses no server functions/loaders, so SPA output
   // is lossless.
   const spaBuild = command === "build" && mode === "android";
+
+  // `bun run dev:https`: serve the dev server over HTTPS with a self-signed
+  // cert so a phone on the same Wi-Fi can use the mic (getUserMedia needs a
+  // secure context; http://<LAN IP> is not one). Dev only, never in builds.
+  const httpsDev = command === "serve" && process.env["CODEHER_HTTPS"] === "1";
 
   const envDefine: Record<string, string> = {};
   for (const [key, value] of Object.entries(loadEnv(mode, process.cwd(), "VITE_"))) {
@@ -115,6 +121,9 @@ export default defineConfig(({ command, mode }) => {
       },
     },
     plugins: [
+      // Cert is cached in node_modules/.vite so the phone's "proceed anyway"
+      // stays valid across restarts.
+      ...(httpsDev ? [basicSsl({ name: "codeher-dev" })] : []),
       tailwindcss(),
       tsconfigPaths({ projects: ["./tsconfig.json"] }),
       tanstackStart({

@@ -313,6 +313,7 @@ export function CodeHerProvider({ children }: { children: ReactNode }) {
   const alertRunRef = useRef(0);
   const alertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openAttemptRef = useRef<number | null>(null);
+  const handoffPlatformRef = useRef<SmsPlatform | null>(null);
 
   const clearAlertTimer = () => {
     if (alertTimerRef.current !== null) clearTimeout(alertTimerRef.current);
@@ -417,12 +418,15 @@ export function CodeHerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (s.phase !== "locating") return;
     const run = ++runRef.current;
-    const live = () => runRef.current === run && ref.current.phase !== "listening";
+    // Tie this run to the alert that started it: after a cancel, a newer
+    // alert or test gets a new alertRun, so the old run can never resume.
+    const alertId = ref.current.alertRun;
+    const live = () =>
+      runRef.current === run &&
+      ref.current.alertRun === alertId &&
+      (ref.current.phase === "locating" || ref.current.phase === "sending");
     (async () => {
       const st = ref.current;
-      // The no signal simulation only applies to the direct send path; in
-      // the web handoff the phone's Messages app owns signal and retry.
-      if (smsMode === "native") setSmsNoSignal(st.settings.simulateNoSignal);
       // Native location/SMS land after listening: a rejection must degrade
       // (no-location SMS, failed status), never stall the flow.
       const fix = await locationService.getCurrent().catch((e: unknown) => {
@@ -444,6 +448,8 @@ export function CodeHerProvider({ children }: { children: ReactNode }) {
         d({ type: "handoff", handoff });
         // One automatic attempt; the UI always renders the tap target too.
         if (handoff.autoOpenAttempted) {
+          // Set before open(): the page can hide before the handoff render.
+          handoffPlatformRef.current = handoff.platform;
           openAttemptRef.current = Date.now();
           webSmsHandoff.open(handoff.href);
         }
@@ -464,11 +470,12 @@ export function CodeHerProvider({ children }: { children: ReactNode }) {
   // Web handoff: the page going hidden right after an open attempt is the
   // best signal the browser gives that Messages opened. A hide at any other
   // time (app switch, screen lock) or on desktop proves nothing.
+  // Listeners stay mounted so a hide that lands before the handoff render
+  // commits (fast sms: intent) is still seen; the refs say whether it counts.
   useEffect(() => {
-    if (s.phase !== "handoff") return;
     const check = () => {
-      const platform = ref.current.handoff?.platform ?? "desktop";
-      if (hideMeansOpened(platform, openAttemptRef.current, Date.now())) {
+      const platform = handoffPlatformRef.current;
+      if (platform && hideMeansOpened(platform, openAttemptRef.current, Date.now())) {
         d({ type: "handoffOpened" });
       }
     };
@@ -480,19 +487,36 @@ export function CodeHerProvider({ children }: { children: ReactNode }) {
     return () => {
       document.removeEventListener("visibilitychange", onHidden);
       window.removeEventListener("pagehide", check);
-      openAttemptRef.current = null;
     };
-  }, [s.phase]);
+  }, []);
+
+  useEffect(() => {
+    if (s.phase === "handoff") {
+      handoffPlatformRef.current = s.handoff?.platform ?? null;
+      return;
+    }
+    // Phase left handoff (or never reached it): nothing to attribute a hide to.
+    if (s.phase !== "locating") {
+      handoffPlatformRef.current = null;
+      openAttemptRef.current = null;
+    }
+  }, [s.phase, s.handoff?.platform]);
 
   // Retry queued messages when signal returns
   useEffect(() => {
-    if (s.phase !== "queued" || s.settings.simulateNoSignal) return;
+    // The "simulate no signal" toggle was removed: a stored value from an older
+    // build must not block the retry, so the flag is no longer read here.
+    if (s.phase !== "queued") return;
+    const alertId = ref.current.alertRun;
+    // She may leave the queued screen while the retry runs: drop its result.
+    const live = () => ref.current.phase === "queued" && ref.current.alertRun === alertId;
     const t = setTimeout(async () => {
       try {
         await smsService.flushQueue();
       } catch (e: unknown) {
         console.error(e);
       }
+      if (!live()) return;
       setSmsNoSignal(false);
       const st = ref.current;
       const results = await sendToContacts(
@@ -501,11 +525,12 @@ export function CodeHerProvider({ children }: { children: ReactNode }) {
           includeMapLink: st.settings.includeMapLink,
         }),
       );
+      if (!live()) return;
       const phase: Phase = results.some((r) => r.status === "sent") ? "sent" : "failed";
       d({ type: "results", results, phase });
     }, 1500);
     return () => clearTimeout(t);
-  }, [s.phase, s.settings.simulateNoSignal]);
+  }, [s.phase]);
 
   const ctx: Ctx = {
     ...s,
@@ -531,6 +556,9 @@ export function CodeHerProvider({ children }: { children: ReactNode }) {
     },
     cancel: () => {
       clearAlertTimer();
+      // Manual SOS works while paused (pause stopped the engine), and cancel
+      // lands on "listening", so make the engine match. start() is idempotent.
+      listeningService.start().catch((e: unknown) => console.error(e));
       d({ type: "phase", phase: "listening" });
     },
     togglePause: () => {

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Copy, MessageSquare, Send } from "lucide-react";
+import { ignoreRepeat } from "@/lib/keys";
 import { formatPH } from "@/lib/phone";
 import { cn } from "@/lib/utils";
 import { useCodeHer, type SmsHandoffState } from "./store";
@@ -16,11 +17,6 @@ export interface HandoffViewProps {
 }
 
 const cardLabel = "text-xs font-bold uppercase tracking-wide text-muted-foreground";
-
-/** A held key from the SOS hold must not fire the action that took focus. */
-function ignoreRepeat(e: KeyboardEvent<HTMLElement>): void {
-  if (e.repeat) e.preventDefault();
-}
 
 /** Leaving before the message was opened or copied asks first: nothing went out. */
 function LeaveButton({ handedOff, onDone }: { handedOff: boolean; onDone: () => void }) {

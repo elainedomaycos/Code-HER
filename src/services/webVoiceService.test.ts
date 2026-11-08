@@ -564,3 +564,12 @@ describe("model URL preflight", () => {
     expect(await probeModelUrl("/m.tar.gz", respond(null, { status: 500 }))).toBe("unknown");
   });
 });
+
+describe("gesture events", () => {
+  it("only uses events that grant user activation on touch screens", async () => {
+    const { GESTURE_EVENTS } = await import("./webVoiceService");
+    // A touch pointerdown carries no activation: resume() there fails on iOS.
+    expect(GESTURE_EVENTS).not.toContain("pointerdown");
+    expect(GESTURE_EVENTS).toEqual(expect.arrayContaining(["pointerup", "touchend", "keydown"]));
+  });
+});
