@@ -79,3 +79,30 @@ export interface StatusService {
     batteryExempt: boolean;
   }>;
 }
+
+// ---- Voice engine readiness (UI copy hints) -------------------------------
+// Finer grained than ListeningStatus so the UI can say "Preparing voice
+// engine" vs "Listening" vs "Mic blocked". While status is anything but
+// "listening", only test mode alerts and manual SOS work.
+export type VoiceEngineStatus =
+  | "off" // not started, or stopped
+  | "loading-model" // mic granted, on-device model loading (first load can take a while)
+  | "needs-gesture" // browser paused audio until the user taps the page
+  | "listening" // engine live, phrase can trigger
+  | "mic-blocked" // microphone permission denied
+  | "unavailable"; // no mic, unsupported browser, insecure context, or model missing
+
+export type VoiceUnavailableReason =
+  | "unsupported" // no getUserMedia / AudioContext / Worker / WebAssembly
+  | "insecure-context" // page not served over HTTPS or localhost
+  | "no-mic" // no audio input device
+  | "model-missing" // model file not served (run `bun run fetch:model`)
+  | "engine-error"; // engine failed to start or crashed
+
+export interface VoiceEngineState {
+  status: VoiceEngineStatus;
+  /** Set only when status is "unavailable". */
+  reason?: VoiceUnavailableReason;
+  /** True on the native Android engine (state is coarse there). */
+  native: boolean;
+}

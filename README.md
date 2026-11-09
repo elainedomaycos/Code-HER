@@ -46,6 +46,67 @@ See [`codeHER.md`](./codeHER.md) (scope + architecture rules),
 [`docs/ACCURACY_TEST.md`](./docs/ACCURACY_TEST.md) (measurement protocol),
 [`docs/PROGRESS.md`](./docs/PROGRESS.md) (running log).
 
+## Web version (try it in a browser)
+
+The same app also runs in a phone or laptop browser, so it can be tested
+without building the Android app. Work is on branch `feat/web-ready-ui`
+([PR #1](https://github.com/elainedomaycos/Code-HER/pull/1)).
+
+### What the web version does
+
+- **Hears your phrase offline.** The same speech engine as the Android app
+  (Vosk) runs inside the browser. Your voice never leaves the device.
+- **Sends the alert through Messages.** A website cannot send a text by
+  itself, so after the countdown it opens your Messages app with the
+  contacts and alert already filled in. You just tap Send. On a laptop it
+  shows the message with a Copy button.
+- **Keeps the screen on.** A browser stops hearing you when the screen
+  locks, so the app keeps the screen on while it listens and while an alert
+  runs. Home tells you: "Keep this page open."
+- **3 simple tabs:** Home (status, setup steps, hold to send SOS, test
+  alert), Contacts, Settings (name, phrase, message preview, test mode).
+- **Test mode** runs the whole alert but never sends anything.
+
+### How to try it
+
+```sh
+bun install
+bun run fetch:model   # one time: downloads the 41 MB voice model
+bun run dev           # laptop: open http://localhost:8080/
+bun run dev:https     # phone: open the "Network: https://..." link it prints
+```
+
+On the phone (same Wi-Fi), the browser shows a security warning once
+because the certificate is made on your laptop. Tap Advanced, then Proceed.
+
+### What was done (2026-11-08)
+
+1. Offline voice trigger in the browser, Messages handoff, and the 3 tab
+   redesign.
+2. `bun run dev:https` so the microphone works when testing on a phone.
+3. Bug fixes from a code review:
+   - a cancelled alert could still be sent later by mistake
+   - after cancelling, voice stayed off while the app said it was listening
+   - on iPhone, tapping to turn on voice did nothing
+   - adding a contact failed on plain http
+   - removed a "Simulate no signal" setting that did nothing on Android
+   - the voice model download is now checked against a fixed fingerprint
+4. Screen stays on while listening or sending an alert (web only).
+
+Checked with 233 automated tests, type check, and lint. Full details are in
+[`docs/PROGRESS.md`](./docs/PROGRESS.md).
+
+### Still to do
+
+- Test on a real phone: say the phrase, check Messages opens filled in, and
+  try iPhone Safari.
+- Run the accuracy test in [`docs/ACCURACY_TEST.md`](./docs/ACCURACY_TEST.md)
+  to get real numbers for how often the phrase is heard.
+- Update the project brief: it names Android SpeechRecognizer, but the app
+  uses Vosk (works offline on every phone and in the browser).
+- A public web link needs the voice model hosted separately (it is bigger
+  than Cloudflare's 25 MB file limit).
+
 ## Tools used
 
 | Layer | Stack |
@@ -72,6 +133,36 @@ Copy-Item "$env:TEMP\vosk-model\vosk-model-small-en-us-0.15\*" `
   "android\app\src\main\assets\model-en-us" -Recurse -Force
 ```
 
+## Web voice trigger (dev notes)
+
+The browser build runs the same offline engine as Android: Vosk compiled to
+WebAssembly ([`vosk-browser`](https://github.com/ccoreilly/vosk-browser)),
+with a restricted grammar of the safe phrase plus `[unk]`. Only final
+results with word confidence of 0.9 or higher fire, as on the phone.
+
+Fetch the model once per machine (~41 MB, git-ignored, saved to
+`public/models/`):
+
+```sh
+bun run fetch:model    # add --force to re-download
+```
+
+- The model is served from the app's own origin (`/models/vosk-model-small-en-us-0.15.tar.gz`)
+  and cached by the engine in IndexedDB after the first load. Audio stays in
+  memory on the device. Nothing is recorded or uploaded.
+- The mic needs a secure context: `http://localhost:8080` works, a LAN IP
+  such as `http://192.168.x.x:8080` on a phone does not. To test on a phone
+  browser, run `bun run dev:https` and open the `Network: https://...` URL it
+  prints from a phone on the same Wi-Fi. The cert is self-signed, so the phone
+  shows a warning once: tap Advanced, then Proceed (Chrome) or Show Details,
+  then visit this website (Safari). If the phone cannot connect, allow port
+  8080 for private networks in Windows Firewall.
+- Without a mic, with mic permission denied, or with the model missing, the
+  app keeps working in simulate only mode: test mode "Simulate phrase" and
+  manual SOS still trigger the alert.
+- Code: `src/services/webVoiceService.ts` (engine lifecycle),
+  `src/services/voskGrammar.ts` (grammar and confidence gating).
+
 ## How to run (developers)
 
 Prerequisites: [Bun](https://bun.sh/), Android Studio + SDK, JDK 21, a
@@ -80,6 +171,7 @@ physical Android phone (emulators can't do mic/SMS reliably).
 ```sh
 bun install
 bun run dev          # web preview at http://localhost:8080/
+bun run dev:https    # same over HTTPS, for phone browsers on your Wi-Fi
 bun run build        # web production build
 bunx tsc --noEmit    # typecheck
 bunx vitest run      # tests

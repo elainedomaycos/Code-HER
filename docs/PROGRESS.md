@@ -3,6 +3,128 @@
 Running log per codeHER.md §9 rule 11: what is done, what is blocked, what was
 learned (especially accuracy test results once the native layer exists).
 
+## 2026-11-08 Screen wake lock (web) after SYNC brief review
+
+The brief's core promise is help "when reaching for her phone is not an
+option". A browser tab loses the mic when the screen locks, so on web:
+
+- `src/services/wakeLockService.ts` keeps the screen on while any reason
+  holds it. "voice" is wired inside `services/index.ts` to the engine state
+  (loading-model, needs-gesture, listening). "alert" is held by the store in
+  detected, countdown, locating, sending, handoff and queued, so a manual SOS
+  from paused cannot stall behind a lock screen. Re-requested when the page
+  is visible again, or when the browser drops it while visible.
+- Home voice card says plainly: "Keep this page open. The screen stays on
+  while listening." or, when the browser refuses, "Keep this page open and
+  the screen on. Voice stops if the screen locks." Nothing while pending.
+- Native unchanged: the foreground service listens with the screen off.
+- Code review of this change: 10 findings, all fixed.
+- Brief gaps still open: accuracy matrix (no numbers yet for either
+  engine), brief still names Android SpeechRecognizer (we use Vosk), no
+  public web URL (model over the 25 MiB asset limit).
+
+## 2026-11-08 HTTPS dev server for phone testing
+
+- `bun run dev:https` sets `CODEHER_HTTPS=1`, which adds
+  `@vitejs/plugin-basic-ssl` to the dev server only (never to builds). Serves
+  `https://<LAN IP>:8080/` with a self-signed cert cached in
+  `node_modules/.vite/basic-ssl`, so the mic works in a phone browser after
+  one "proceed anyway". Verified: page 200 and the 41 MB model 200 over TLS on
+  the LAN IP. Real phone run (voice trigger + Messages handoff) still to do.
+
+## 2026-11-08 Branch code review fixes
+
+Review of feat/web-ready-ui against main; 8 of 10 findings fixed.
+
+- A real alert cancelled while locating could come back inside a later test
+  and open Messages. The locating run is now tied to its `alertRun` and only
+  continues while the phase is locating/sending (`alertRun.test.tsx`).
+- The queued retry drops its result if she left the queued screen.
+- Cancel restarts the voice engine (manual SOS from paused left it off while
+  the UI said listening).
+- Messages "opened" detection: hide listeners stay mounted and the platform
+  is recorded before `open()`, so a hide before the handoff render counts.
+- "Simulate no signal" removed. It was shown only on native, where it did
+  nothing except a misleading header; the stored flag no longer blocks retry.
+- Voice "tap to start" listens on pointerup/touchend/keydown. A touch
+  pointerdown has no user activation, so iOS never resumed audio.
+- Contact ids use `newId()` (`src/lib/id.ts`): `crypto.randomUUID` is missing
+  on plain http LAN pages.
+- `fetch:model` pins the archive SHA-256. `ignoreRepeat` shared from
+  `src/lib/keys.ts`.
+- Not done (low): `autoOpenAttempted` is derivable from `platform`.
+
+## 2026-11-08 Review fixes (alert copy, handoff status, timers, SMS text, APK size)
+
+- Zero contacts: only the web handoff says "You will choose who to text after
+  the countdown". On native, Home and the countdown say "Add a contact first.
+  No one will get this alert." Native SOS is not blocked (the flow still ends
+  on the failed result screen). Copy lives in `components/codeher/format.ts`.
+- Handoff "opened" now needs a page hide within 2 s of an open attempt (auto
+  open or a link tap) on a phone. Desktop never counts; a desktop link click
+  records nothing. Chip reads "Messages opened"; otherwise "Not sent yet" and
+  the leave confirm stay.
+- The 400 ms detected to countdown step carries an alert run id
+  (`countdownStart`); the reducer ignores it unless the phase is still
+  "detected" for that run, and cancel clears the timer. A cancelled test can
+  no longer come back as a real countdown.
+- One `joinNames` helper and one `COUNTDOWN_SECONDS` (exported from store).
+- Alert text in plain words: "Location: 14.59950,120.98420 at 10:29 PM.",
+  "Last known location: ...", and "within about 120 m" only when accuracy is
+  worse than 50 m. Coarse fixes (over 100 m) still round coordinates.
+  `fmtTime` maps non ASCII spaces (Chrome's U+202F before PM) to a plain
+  space so the SMS stays GSM 7-bit. Maps link default stays off everywhere;
+  a handoff-only default would need `storageService` defaults and stored
+  settings cannot tell a default from a user choice, so it was left.
+- `bun run build:android` drops `public/models` from `dist/client` (vite
+  plugin, android mode only), so the 41 MB web model no longer lands in the
+  APK. The web build still ships `.output/public/models/`.
+
+## 2026-11-08 — Web-ready UI: offline voice in the browser + SMS handoff + 3 tabs
+
+### Done
+
+- **Offline voice trigger on web**: `src/services/webVoiceService.ts` runs
+  Vosk compiled to WASM (`vosk-browser`, same Kaldi/Vosk engine as Android)
+  with the restricted grammar (safe phrase + `[unk]`) and the same finals-only,
+  word conf ≥ 0.9 gate (`src/services/voskGrammar.ts`). Model
+  `vosk-model-small-en-us-0.15.tar.gz` (~41 MB) is fetched once per machine
+  with `bun run fetch:model` (`scripts/fetch-vosk-model.ts`) into
+  git-ignored `public/models/`, served same-origin and cached in IndexedDB
+  (verified: one fetch, reload hits the cache, no console errors, Home shows
+  "Listening for “help me”"). Degrades to simulate-only (test mode + manual
+  SOS) when the mic is blocked, the model is missing or the context is
+  insecure. Engine readiness exposed via `getVoiceEngineState` /
+  `onVoiceEngineStateChange` in `src/services/index.ts`.
+- **Web SMS handoff**: a browser cannot send SMS, so after the countdown
+  `HandoffScreen` opens the Messages app through an `sms:` link prefilled
+  with every recipient and the alert text (`src/lib/smsLink.ts`, per
+  platform URI format); the user taps Send. Desktop shows the exact message
+  with a Copy button. Exposed as `webSmsHandoff` from the services barrel;
+  native still sends via SmsManager.
+- **Navigation = 3 tabs** (`Shell.tsx`, `CodeHerApp.tsx`): Home (status,
+  setup checklist, hold-to-send SOS, test alert), Contacts (contacts only),
+  Settings (name, safe phrase, message preview with segment counter, maps
+  link toggle, test mode, privacy, permissions, about). The old
+  `Screens.tsx` monolith was split into one file per screen/panel.
+- Onboarding rewritten as a plain "how it works" + permission step; test
+  alert runs the full countdown and ends on a "nothing was sent" preview.
+- UI copy pass: no leading dashes/decorative rules, no em dashes in UI
+  strings under `src/components/codeher`.
+- Verified: `bun run test` 150/150 (21 files), `bunx tsc --noEmit` clean,
+  `bun run lint` 0 errors (11 pre-existing fast-refresh warnings),
+  `bun run build` ✓.
+
+### Blocked / Next
+
+- Phone-browser testing needs HTTPS (mic requires a secure context; a LAN IP
+  over http does not work). Use a tunnel or a local cert.
+- The 41 MB model is copied into `.output/public/models/` by the build; it
+  exceeds Cloudflare's 25 MiB per-asset limit, so a hosted web deploy needs
+  the model on separate static storage (same origin path) or split.
+- Accuracy matrix (§11) still to run for the browser engine; thresholds are
+  shared with Android but WebAudio resampling may shift confidence.
+
 ## 2026-10-09 — Web foundation + Lovable decoupling + service layer
 
 ### Done

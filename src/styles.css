@@ -20,6 +20,8 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-deep: var(--primary-deep);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -29,6 +31,9 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
+  --color-success-ink: var(--success-ink);
+  --color-coral-ink: var(--coral-ink);
+  --color-warning-soft: var(--warning-soft);
   --color-warning: var(--warning);
   --color-paused: var(--paused);
   --color-border: var(--border);
@@ -46,19 +51,28 @@
   --popover-foreground: oklch(0.29 0.02 275);
   --primary: oklch(0.65 0.19 22);
   --primary-foreground: oklch(0.99 0.005 60);
+  /* Filled buttons: white text needs 4.5:1, the lighter coral stays for glow and ring. */
+  --primary-strong: oklch(0.56 0.2 24);
+  /* Hold progress fill, visibly darker than --primary-strong. */
+  --primary-deep: oklch(0.44 0.16 24);
   --secondary: oklch(0.93 0.03 25);
   --secondary-foreground: oklch(0.45 0.12 22);
   --muted: oklch(0.94 0.012 60);
-  --muted-foreground: oklch(0.52 0.02 275);
+  --muted-foreground: oklch(0.47 0.02 275);
   --accent: oklch(0.93 0.03 25);
   --accent-foreground: oklch(0.29 0.02 275);
   --destructive: oklch(0.58 0.22 25);
   --destructive-foreground: oklch(0.99 0 0);
   --success: oklch(0.6 0.13 155);
+  /* Text-safe variants (WCAG AA on cream and white). */
+  --success-ink: oklch(0.45 0.11 155);
+  --coral-ink: oklch(0.52 0.18 25);
+  --warning-soft: oklch(0.95 0.05 80);
   --warning: oklch(0.72 0.14 70);
   --paused: oklch(0.7 0.01 275);
   --border: oklch(0.9 0.015 50);
-  --input: oklch(0.9 0.015 50);
+  /* Form control edges need 3:1 against card and background. */
+  --input: oklch(0.62 0.02 50);
   --ring: oklch(0.65 0.19 22);
   --shadow-soft: 0 8px 24px -12px oklch(0.4 0.05 30 / 0.25);
   --shadow-glow: 0 24px 60px -16px oklch(0.65 0.19 22 / 0.55);
@@ -68,11 +82,17 @@
 
 @layer base {
   * { border-color: var(--color-border); }
+  html { scroll-padding-top: 5rem; }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-tap-highlight-color: transparent;
+  }
+  /* Visible focus for keyboard users on every control. */
+  :focus-visible {
+    outline: 3px solid var(--color-ring);
+    outline-offset: 2px;
   }
 }
 
@@ -102,7 +122,13 @@
 /* codeHER.md §8: honor reduced motion for all brand animation. */
 @media (prefers-reduced-motion: reduce) {
   .animate-splash-in,
-  .animate-splash-out, .animate-pulse-ring {
+  .animate-splash-out,
+  .animate-pulse-ring {
     animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
   }
 }
