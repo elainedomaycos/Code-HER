@@ -46,6 +46,67 @@ See [`codeHER.md`](./codeHER.md) (scope + architecture rules),
 [`docs/ACCURACY_TEST.md`](./docs/ACCURACY_TEST.md) (measurement protocol),
 [`docs/PROGRESS.md`](./docs/PROGRESS.md) (running log).
 
+## Web version (try it in a browser)
+
+The same app also runs in a phone or laptop browser, so it can be tested
+without building the Android app. Work is on branch `feat/web-ready-ui`
+([PR #1](https://github.com/elainedomaycos/Code-HER/pull/1)).
+
+### What the web version does
+
+- **Hears your phrase offline.** The same speech engine as the Android app
+  (Vosk) runs inside the browser. Your voice never leaves the device.
+- **Sends the alert through Messages.** A website cannot send a text by
+  itself, so after the countdown it opens your Messages app with the
+  contacts and alert already filled in. You just tap Send. On a laptop it
+  shows the message with a Copy button.
+- **Keeps the screen on.** A browser stops hearing you when the screen
+  locks, so the app keeps the screen on while it listens and while an alert
+  runs. Home tells you: "Keep this page open."
+- **3 simple tabs:** Home (status, setup steps, hold to send SOS, test
+  alert), Contacts, Settings (name, phrase, message preview, test mode).
+- **Test mode** runs the whole alert but never sends anything.
+
+### How to try it
+
+```sh
+bun install
+bun run fetch:model   # one time: downloads the 41 MB voice model
+bun run dev           # laptop: open http://localhost:8080/
+bun run dev:https     # phone: open the "Network: https://..." link it prints
+```
+
+On the phone (same Wi-Fi), the browser shows a security warning once
+because the certificate is made on your laptop. Tap Advanced, then Proceed.
+
+### What was done (2026-11-08)
+
+1. Offline voice trigger in the browser, Messages handoff, and the 3 tab
+   redesign.
+2. `bun run dev:https` so the microphone works when testing on a phone.
+3. Bug fixes from a code review:
+   - a cancelled alert could still be sent later by mistake
+   - after cancelling, voice stayed off while the app said it was listening
+   - on iPhone, tapping to turn on voice did nothing
+   - adding a contact failed on plain http
+   - removed a "Simulate no signal" setting that did nothing on Android
+   - the voice model download is now checked against a fixed fingerprint
+4. Screen stays on while listening or sending an alert (web only).
+
+Checked with 233 automated tests, type check, and lint. Full details are in
+[`docs/PROGRESS.md`](./docs/PROGRESS.md).
+
+### Still to do
+
+- Test on a real phone: say the phrase, check Messages opens filled in, and
+  try iPhone Safari.
+- Run the accuracy test in [`docs/ACCURACY_TEST.md`](./docs/ACCURACY_TEST.md)
+  to get real numbers for how often the phrase is heard.
+- Update the project brief: it names Android SpeechRecognizer, but the app
+  uses Vosk (works offline on every phone and in the browser).
+- A public web link needs the voice model hosted separately (it is bigger
+  than Cloudflare's 25 MB file limit).
+
 ## Tools used
 
 | Layer | Stack |
